@@ -1,9 +1,28 @@
-import PySimpleGUI as sg
-import time
-import pandas as pd
-import numpy as np
-import os.path
+import io
 import random as rd
+import time
+
+import PySimpleGUI as sg
+import numpy as np
+from PIL import Image, ImageTk
+
+
+def get_img_data(f, maxsize=(1200, 850), first=False):
+    """Generate image data using PIL
+    """
+    img = Image.open(f)
+    img.thumbnail(maxsize)
+    if first:  # tkinter is inactive the first time
+        cur_width, cur_height = img.size
+        new_width = cur_width * 2.5
+        new_height = cur_height * 2.5
+        scale = min(new_height / cur_height, new_width / cur_width)
+        img = img.resize((int(cur_width * scale), int(cur_height * scale)), Image.ANTIALIAS)
+        bio = io.BytesIO()
+        img.save(bio, format="PNG")
+        del img
+        return bio.getvalue()
+    return ImageTk.PhotoImage(img)
 
 
 def method1(sample, photo, number):
@@ -174,7 +193,7 @@ for k in range(0, 40):
     first = rd.randint(0, 9)
     second = rd.randint(0, 9)
     while first == second:
-        second = rd.randint(0, 10)
+        second = rd.randint(0, 9)
     samples.append(all_photo[k * 10 + first])
     samples.append(all_photo[k * 10 + second])
     samples_adress.append('s' + str(k + 1) + '/' + str(first + 1))
@@ -198,18 +217,36 @@ for i in range(len(samples)):
 
 layout = [[sg.Button('Start first method'), sg.Button('Start second method')]]
 window = sg.Window('Face detection', layout, finalize=True)
-# event, values = window.read()
-# window.enable()
-# window.
-# window['photo'].update('2.pgm')
 while True:  # The Event Loop
     event, values = window.read()
     print(event, values)  # debug
-    if event == "WIN_CLOSED":
+    if event == sg.WIN_CLOSED:
+        window.close()
         break
     if event == "Start first method":
-        iterable = 0
+        window.close()
+        Flag = "False"
+        iterable = 1
         true_iter = 0
+        image_elem2 = sg.Image(get_img_data('Arch/s1/1.pgm', first=True), key='result')
+        image_elem3 = sg.Image(get_img_data('Arch/' + samples_adress[(iterable - 1) // 10 * 2] + '.pgm', first=True),
+                               key='True sample')
+        image_elem1 = sg.Image(
+            get_img_data('Arch/s' + str((iterable - 1) // 10 + 1) + '/' + str((iterable - 1) % 10 + 1) + '.pgm',
+                         first=True), key='photo')
+        textelem1 = sg.Text('s' + str((iterable - 1) // 10 + 1), font=88)
+        textelem2 = sg.Text(Flag, font=88)
+        textelem3 = sg.Text("Current accuracy: " + str(true_iter / iterable), font=88)
+        layout = [[textelem1, textelem2],
+                  [sg.Text("TEST                                                             "),
+                   sg.Text(" ANSWER                                         "), sg.Text("TRUE ANSWER")],
+                  [image_elem1,
+                   image_elem2,
+                   image_elem3],
+                  [textelem3]
+                  ]
+        window = sg.Window('Face detection', layout, finalize=True, resizable=True, location=(700, 300))
+        iterable -= 1
         for photo in all_photo:
             Flag = "False"
             iterable += 1
@@ -233,13 +270,13 @@ while True:  # The Event Loop
             else:
                 agreement[second[2]] = 1
             if third[0] in agreement:
-                agreement[third[0]] += 3.01
+                agreement[third[0]] += 3.03
             else:
-                agreement[third[0]] = 3.01
+                agreement[third[0]] = 3.03
             if third[1] in agreement:
-                agreement[third[1]] += 2.01
+                agreement[third[1]] += 2.02
             else:
-                agreement[third[1]] = 2.01
+                agreement[third[1]] = 2.02
             if third[2] in agreement:
                 agreement[third[2]] += 1.01
             else:
@@ -252,24 +289,44 @@ while True:  # The Event Loop
             if str(((iterable - 1) // 10) + 1) == samples_adress[result][1:samples_adress[result].index('/')]:
                 Flag = "True"
                 true_iter += 1
-            time.sleep(0.8)
-            layout = [[sg.Text('s' + str((iterable - 1) // 10 + 1)), sg.Text(Flag)],
-                [sg.Image('Arch/s' + str((iterable - 1) // 10 + 1) + '/' + str((iterable - 1) % 10 + 1) + '.pgm',
-                          key='photo'),
-                 sg.Image('Arch/' + samples_adress[result] + '.pgm', key='result'),
-                 sg.Image('Arch/' + samples_adress[(iterable - 1) // 10 * 2] + '.pgm', key='True sample')],
-                [sg.Text("Current accuracy: " + str(true_iter / iterable))]
-            ]
-            window.close()
-            window = sg.Window('Face detection', layout, finalize=True, resizable=True, location=(700,300))
+            time.sleep(0.2)
+            image_elem1.update(data=get_img_data(
+                'Arch/s' + str((iterable - 1) // 10 + 1) + '/' + str((iterable - 1) % 10 + 1) + '.pgm', first=True))
+            image_elem2.update(data=get_img_data('Arch/' + samples_adress[result] + '.pgm', first=True))
+            image_elem3.update(
+                data=get_img_data('Arch/' + samples_adress[(iterable - 1) // 10 * 2] + '.pgm', first=True))
+            textelem1.update(value='s' + str((iterable - 1) // 10 + 1))
+            textelem2.update(value=Flag)
+            textelem3.update(value="Current accuracy: " + str(true_iter / iterable))
             window.Refresh()
-        layout = [[sg.Text("Final accuracy: " + str(true_iter / iterable))],[sg.Button("Close")]
+        layout = [[sg.Text("Final accuracy: " + str(true_iter / iterable))], [sg.Button("Close")]
                   ]
         window = sg.Window('Face detection', layout, finalize=True)
         window.Refresh()
     if event == "Start second method":
-        iterable = 0
+        window.close()
+        Flag = "False"
+        iterable = 1
         true_iter = 0
+        image_elem2 = sg.Image(get_img_data('Arch/s1/1.pgm', first=True), key='result')
+        image_elem3 = sg.Image(get_img_data('Arch/' + samples_adress[(iterable - 1) // 10 * 2] + '.pgm', first=True),
+                               key='True sample')
+        image_elem1 = sg.Image(
+            get_img_data('Arch/s' + str((iterable - 1) // 10 + 1) + '/' + str((iterable - 1) % 10 + 1) + '.pgm',
+                         first=True), key='photo')
+        textelem1 = sg.Text('s' + str((iterable - 1) // 10 + 1), font=88)
+        textelem2 = sg.Text(Flag, font=88)
+        textelem3 = sg.Text("Current accuracy: " + str(true_iter / iterable), font=88)
+        layout = [[textelem1, textelem2],
+                  [sg.Text("TEST                                                             "),
+                   sg.Text(" ANSWER                                         "), sg.Text("TRUE ANSWER")],
+                  [image_elem1,
+                   image_elem2,
+                   image_elem3],
+                  [textelem3]
+                  ]
+        window = sg.Window('Face detection', layout, finalize=True, resizable=True, location=(700, 300))
+        iterable -= 1
         for photo in all_photo:
             Flag = "False"
             iterable += 1
@@ -312,26 +369,19 @@ while True:  # The Event Loop
             if str(((iterable - 1) // 10) + 1) == samples_adress[result][1:samples_adress[result].index('/')]:
                 Flag = "True"
                 true_iter += 1
-            time.sleep(0.8)
-            layout = [[sg.Text('s' + str((iterable - 1) // 10 + 1)), sg.Text(Flag)],
-                [sg.Image('Arch/s' + str((iterable - 1) // 10 + 1) + '/' + str((iterable - 1) % 10 + 1) + '.pgm',
-                          key='photo'),
-                 sg.Image('Arch/' + samples_adress[result] + '.pgm', key='result'),
-                 sg.Image('Arch/' + samples_adress[(iterable - 1) // 10 * 2] + '.pgm', key='True sample')],
-                [sg.Text("Current accuracy: " + str(true_iter / iterable))]
-            ]
-            window.close()
-            window = sg.Window('Face detection', layout, finalize=True, resizable=True, location=(700, 300))
+            time.sleep(0.2)
+            image_elem1.update(data=get_img_data(
+                'Arch/s' + str((iterable - 1) // 10 + 1) + '/' + str((iterable - 1) % 10 + 1) + '.pgm', first=True))
+            image_elem2.update(data=get_img_data('Arch/' + samples_adress[result] + '.pgm', first=True))
+            image_elem3.update(
+                data=get_img_data('Arch/' + samples_adress[(iterable - 1) // 10 * 2] + '.pgm', first=True))
+            textelem1.update(value='s' + str((iterable - 1) // 10 + 1))
+            textelem2.update(value=Flag)
+            textelem3.update(value="Current accuracy: " + str(true_iter / iterable))
             window.Refresh()
-        layout = [[sg.Text("Final accuracy: " + str(true_iter / iterable))],[sg.Button("Close")]
+        layout = [[sg.Text("Final accuracy: " + str((true_iter - 80) / (iterable - 80)))], [sg.Button("Close")]
                   ]
         window = sg.Window('Face detection', layout, finalize=True)
         window.Refresh()
     if event == 'Close':
         window.close()
-    # break
-    # if event == 'Show':
-    # layout = [[sg.Image('2.pgm', key='photo')]]
-    # window = sg.Window('File Compare', layout)
-    # window.refresh()
-
